@@ -1,11 +1,10 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:twilio_voice/twilio_voice.dart';
+import 'package:dio/dio.dart';
 
 import 'package:twilio_voice_example/call_screen.dart';
 
@@ -32,7 +31,7 @@ class _DialScreenState extends State<DialScreen> with WidgetsBindingObserver {
   late String userId;
 
   registerUser() {
-    print("voip- service init");
+    print("voip-service init");
     // if (TwilioVoice.instance.deviceToken != null) {
     //   print("device token changed");
     // }
@@ -48,56 +47,57 @@ class _DialScreenState extends State<DialScreen> with WidgetsBindingObserver {
   register() async {
     print("voip-registtering with token ");
     print("voip-calling voice-accessToken");
-    final function =
-        FirebaseFunctions.instance.httpsCallable("voice-accessToken");
 
-    final data = {
-      "platform": Platform.isIOS ? "iOS" : "Android",
-    };
+    String platform = Platform.isAndroid ? 'android' : 'ios';
 
-    final result = await function.call(data);
-    print("voip-result");
-    print(result.data);
+    final response = await Dio()
+        .get("http://192.168.2.13:3000/accessToken/testChristo/$platform");
+
     String? androidToken;
     if (Platform.isAndroid) {
       androidToken = await FirebaseMessaging.instance.getToken();
       print("androidToken is " + androidToken!);
     }
     TwilioVoice.instance
-        .setTokens(accessToken: result.data, deviceToken: androidToken);
+        .setTokens(accessToken: response.data, deviceToken: androidToken);
   }
 
   var registered = false;
-  waitForLogin() {
-    final auth = FirebaseAuth.instance;
-    auth.authStateChanges().listen((user) async {
-      // print("authStateChanges $user");
-      if (user == null) {
-        print("user is anonomous");
-        await auth.signInAnonymously();
-      } else if (!registered) {
-        registered = true;
-        this.userId = user.uid;
-        print("registering user ${user.uid}");
-        registerUser();
+  waitForLogin() async {
+    // final auth = FirebaseAuth.instance;
+    // auth.authStateChanges().listen((user) async {
+    // print("authStateChanges $user");
+    // if (user == null) {
+    //  print("user is anonomous");
+    //  await auth.signInAnonymously();
+    // } else if (!registered) {
+    // registered = true;
+    // this.userId = user.uid;
+    // print("registering user ${user.uid}");
+    registerUser();
 
-        FirebaseMessaging.instance.requestPermission();
-        // FirebaseMessaging.instance.configure(
-        //     onMessage: (Map<String, dynamic> message) {
-        //   print("onMessage");
-        //   print(message);
-        //   return;
-        // }, onLaunch: (Map<String, dynamic> message) {
-        //   print("onLaunch");
-        //   print(message);
-        //   return;
-        // }, onResume: (Map<String, dynamic> message) {
-        //   print("onResume");
-        //   print(message);
-        //   return;
-        // });
-      }
-    });
+    FirebaseMessaging.instance.requestPermission();
+
+    if (await TwilioVoice.instance.requiresBackgroundPermissions()) {
+      TwilioVoice.instance.requestBackgroundPermissions();
+    }
+
+    // FirebaseMessaging.instance.configure(
+    //     onMessage: (Map<String, dynamic> message) {
+    //   print("onMessage");
+    //   print(message);
+    //   return;
+    // }, onLaunch: (Map<String, dynamic> message) {
+    //   print("onLaunch");
+    //   print(message);
+    //   return;
+    // }, onResume: (Map<String, dynamic> message) {
+    //   print("onResume");
+    //   print(message);
+    //   return;
+    // });
+    // }
+    // });
   }
 
   @override
@@ -109,8 +109,8 @@ class _DialScreenState extends State<DialScreen> with WidgetsBindingObserver {
     waitForCall();
     WidgetsBinding.instance!.addObserver(this);
 
-    final partnerId = "alicesId";
-    TwilioVoice.instance.registerClient(partnerId, "Alice");
+    final partnerId = "testChristo";
+    TwilioVoice.instance.registerClient(partnerId, "Christo");
     _controller = TextEditingController();
   }
 
@@ -225,7 +225,7 @@ class _DialScreenState extends State<DialScreen> with WidgetsBindingObserver {
                     }
                     print("starting call to ${_controller.text}");
                     TwilioVoice.instance.call
-                        .place(to: _controller.text, from: userId);
+                        .place(to: _controller.text, from: "testChristo");
                     pushToCallScreen();
                   },
                 ),
