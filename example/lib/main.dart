@@ -53,13 +53,12 @@ class _DialScreenState extends State<DialScreen> with WidgetsBindingObserver {
     final response = await Dio()
         .get("http://192.168.2.13:3000/accessToken/testChristo/$platform");
 
-    String? androidToken;
-    if (Platform.isAndroid) {
-      androidToken = await FirebaseMessaging.instance.getToken();
-      print("androidToken is " + androidToken!);
-    }
-    TwilioVoice.instance
-        .setTokens(accessToken: response.data, deviceToken: androidToken);
+    String? token = await FirebaseMessaging.instance.getToken();
+    print("FCM token is " + token!);
+
+    TwilioVoice.instance.setTokens(
+        accessToken: response.data,
+        deviceToken: Platform.isAndroid ? token : null);
   }
 
   var registered = false;
